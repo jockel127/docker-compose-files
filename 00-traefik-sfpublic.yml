@@ -1,0 +1,52 @@
+version: '3.7'
+
+services:
+  traefik:
+    image: "traefik:latest"
+    restart: "always"
+    container_name: "traefik"
+    # Enables the web UI and tells Traefik to listen to docker
+    command:
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--log.level=ERROR"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/conf"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+        #  - "--entrypoints.minecraft.address=:25565"
+      - "--entrypoints.valheim.address=:2456"
+      - "--entrypoints.valheim-udp.address=:2456/udp"
+      - "--entrypoints.websecure.http.tls.options=default"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=<yourmail>" #replace <yourmail>
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+       - "80:80"
+       - "443:443"
+    volumes:
+      - "traefik_letsencrypt:/letsencrypt"
+      - "traefik_config:/conf:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`proxy.jockelnode.de`)"
+      - "traefik.http.routers.api.service=api@internal"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=myresolver"
+      - "traefik.http.routers.api.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=<username>:<saltedHash>" ##replace <username>:<saltedHash>
+    networks:
+      - proxy
+
+networks:
+  proxy:
+
+volumes:
+  traefik_letsencrypt:
+  traefik_config:

@@ -1,0 +1,5 @@
+.env-files
+bak
+00-traefik.yml
+homer-fusic.yml
+unused

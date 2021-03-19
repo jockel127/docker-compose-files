@@ -1,0 +1,103 @@
+version: '3'
+
+services:
+    # Frontend
+    web:
+        image: jitsi/web:latest
+        container_name: jitsi_web
+        restart: unless-stopped
+        labels:
+            - "traefik.docker.network=docker_proxy"
+            - "traefik.enable=true"
+            - "traefik.http.routers.jitsi.rule=Host(`noskype.jockelnode.de`)"
+            - "traefik.http.routers.jitsi.entrypoints=websecure"
+            - "traefik.http.routers.jitsi.tls.certresolver=myresolver"
+            - "traefik.http.routers.jitsi.middlewares=jitsi"
+            - "traefik.http.middlewares.jitsi.headers.customFrameOptionsValue=SAMEORIGIN"
+            - "traefik.http.middlewares.jitsi.headers.contentSecurityPolicy=frame-ancestors 'self' jockelnode.de *.jockelnode.de"
+            - "traefik.http.middlewares.jitsi.headers.stsSeconds=155520011"
+            - "traefik.http.middlewares.jitsi.headers.stsIncludeSubdomains=true"
+            - "traefik.http.middlewares.jitsi.headers.stsPreload=true"
+            - "traefik.http.middlewares.jitsi.headers.browserXssFilter=true"
+            - "traefik.http.middlewares.jitsi.headers.contentTypeNosniff=true"
+            - "traefik.http.middlewares.jitsi.headers.referrerPolicy=same-origin"
+        volumes:
+            - jitsi_web:/config:Z
+            - jitsi_web-transcripts:/usr/share/jitsi-meet/transcripts:Z
+        env_file:
+            - /srv/docker/.env-files/.env.jitsi
+        networks:
+            jitsi:
+                aliases:
+                    - xmpp.meet.jitsi
+            docker_proxy:
+
+    # XMPP server
+    prosody:
+        image: jitsi/prosody:latest
+        container_name: jitsi_prosody
+        restart: unless-stopped
+        expose:
+            - '5222'
+            - '5347'
+            - '5280'
+        volumes:
+            - jitsi_prosody-config:/config:Z
+            - jitsi_prosody-plugins-custom:/prosody-plugins-custom:Z
+        env_file:
+            - /srv/docker/.env-files/.env.jitsi
+        networks:
+            jitsi:
+                aliases:
+                    - xmpp.meet.jitsi
+
+    # Focus component
+    jicofo:
+        image: jitsi/jicofo:latest
+        container_name: jitsi_jicofo
+        restart: unless-stopped
+        env_file:
+            - /srv/docker/.env-files/.env.jitsi
+        volumes:
+            - jitsi_jicofo:/config:Z
+        depends_on:
+            - prosody
+        networks:
+            jitsi:
+    # Video bridge
+    jvb:
+        image: jitsi/jvb:latest
+        container_name: jitsi_jvb
+        restart: unless-stopped
+        env_file:
+            - /srv/docker/.env-files/.env.jitsi
+        ports:
+            - '10000:10000/udp'
+            - '4443:4443'
+        volumes:
+            - jitsi_jvb:/config:Z
+        depends_on:
+            - prosody
+        networks:
+            jitsi:
+
+# Custom network so all services can communicate using a FQDN
+#
+volumes:
+   jitsi_jvb:
+     driver: local
+   jitsi_jicofo:
+     driver: local
+   jitsi_prosody-config:
+     driver: local
+   jitsi_prosody-plugins-custom:
+     driver: local
+   jitsi_web:
+     driver: local
+   jitsi_web-transcripts:
+     driver: local
+
+networks:
+    jitsi:
+    docker_proxy:
+      external: true

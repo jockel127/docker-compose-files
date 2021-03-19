@@ -1,0 +1,39 @@
+version: '3.3'
+services:
+  homer-private:
+    image: 'b4bz/homer'
+    container_name: homer-private
+    volumes:
+      - 'homer-private:/www/assets'
+    environment:
+      - 'UID=1000'
+      - 'GID=1000'
+    labels:
+      - "traefik.docker.network=docker_proxy"
+      - "traefik.enable=true"
+      - "traefik.http.routers.homer-private.rule=Host(`start.jockelnode.de`)"
+      - "traefik.http.routers.homer-private.entrypoints=websecure"
+      - "traefik.http.routers.homer-private.tls.certresolver=myresolver"
+      - "traefik.http.routers.homer-private.middlewares=homer-private"
+      - "traefik.http.middlewares.homer-private.headers.sslredirect=true"
+      - "traefik.http.middlewares.homer-private.headers.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.middlewares.homer-private.headers.contentSecurityPolicy=frame-ancestors 'self' jockelnode.de *.jockelnode.de"
+      - "traefik.http.middlewares.homer-private.headers.stsSeconds=155520011"
+      - "traefik.http.routers.homer-private.tls.options=default"
+      - "traefik.http.middlewares.homer-private.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.homer-private.headers.stsPreload=true"
+      - "traefik.http.middlewares.homer-private.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.homer-private.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.homer-private.headers.referrerPolicy=same-origin"
+    networks:
+      - docker_proxy
+
+
+volumes:
+  homer-private:
+    driver: local
+
+networks:
+  docker_proxy:
+    external: true
+

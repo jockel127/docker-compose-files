@@ -1,0 +1,41 @@
+version: "3"
+
+services: 
+  valheim: 
+    image: lloesche/valheim-server
+    container_name: valheim
+    #cap_add:
+    #     - sys_nice
+    volumes: 
+      - valheim-config:/config
+      - valheim-data:/opt/valheim
+    ports: 
+      - "2456-2457:2456-2457/udp"
+      - "9001:9001/tcp"
+    env_file:
+      - /srv/docker/.env-files/valheim.env
+    restart: always
+    #stop_grace_period: 2m
+    labels:
+      - "traefik.docker.network=docker_proxy"
+#      - "traefik.http.routers.valheim.rule=Host(`valheim.jockelnode.de`)"
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.valheim.rule=HostSNI(`valheim.jockelnode.de`)"
+      - "traefik.tcp.routers.valheim.entrypoints=valheim"
+      - "traefik.tcp.services.valheim.loadbalancer.server.port=2456"
+      - "traefik.udp.routers.valheim.rule=HostSNI(`valheim.jockelnode.de`)"
+      - "traefik.udp.routers.valheim.entrypoints=valheim-udp"
+      - "traefik.udp.services.valheim.loadbalancer.server.port=2456"
+    networks:
+      - docker_proxy
+
+
+volumes:
+  valheim-config:
+    driver: local
+  valheim-data:
+    driver: local
+
+networks:
+  docker_proxy:
+    external: true
